@@ -99,15 +99,11 @@ input {
 .result-card {
   position: relative;
   z-index: 1;
-  width: min(720px, calc(100vw - 32px));
-  padding: 36px 28px;
+  width: min(540px, calc(100vw - 32px));
+  padding: 32px;
   text-align: center;
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 24px;
-  background: rgba(15, 4, 28, 0.86);
-  box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.5),
-    inset 0 0 40px rgba(107, 0, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(15, 4, 28, 0.84);
 }
 
 .home-title {
@@ -140,13 +136,14 @@ input {
   font-style: italic;
 }
 
-.home-description,
 .result-subtitle {
   margin: 0 auto 26px;
-  max-width: 560px;
-  line-height: 1.6;
   color: rgba(255, 255, 255, 0.9);
   font-size: clamp(0.88rem, 1.8vw, 1rem);
+}
+
+.result-subtitle:empty {
+  display: none;
 }
 
 .primary-button,
@@ -158,12 +155,13 @@ input {
 }
 
 .primary-button {
-  padding: 14px 30px;
+  width: 100%;
+  height: 48px;
+  padding: 0 20px;
   border-radius: 999px;
   background: var(--gold);
   color: #000000;
   font-weight: 700;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.35);
 }
 
 .secondary-button {
@@ -180,89 +178,84 @@ input {
   transform: translateY(-2px);
 }
 
+.hidden {
+  display: none !important;
+}
+
 .game-shell {
   display: grid;
-  grid-template-rows: 60px 130px minmax(0, 1fr) 130px 60px;
+  grid-template-rows: 60px 130px minmax(0, 1fr) 130px;
   width: 100%;
   height: 100vh;
 }
 
-.scoreboard,
-.bottom-bar {
+.scoreboard {
   display: grid;
   align-items: center;
-  padding: 0 22px;
+  padding: 0 24px;
   background: rgba(13, 2, 26, 0.9);
   border-bottom: 1px solid rgba(107, 0, 255, 0.22);
-}
-
-.scoreboard {
-  grid-template-columns: 1fr 1fr 1.1fr 1fr;
-  gap: 12px;
-}
-
-.bottom-bar {
-  grid-template-columns: 1fr auto;
-  border-top: 1px solid rgba(107, 0, 255, 0.22);
-  border-bottom: none;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
 }
 
-.score-item,
-.round-item,
-.holder-item {
+.score-slot,
+.round-item {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.score-left {
+.score-slot:first-child {
   justify-content: flex-start;
 }
 
-.score-right {
+.score-slot:last-child {
   justify-content: flex-end;
 }
 
-.round-item,
-.holder-item {
+.round-item {
   justify-content: center;
 }
 
-.score-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.74);
-}
-
+.score-name,
 .score-value,
-.holder-name {
-  color: var(--gold);
+.round-label,
+.round-value {
+  font-size: 0.92rem;
   font-weight: 700;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.round-value {
-  font-weight: 700;
+.score-slot {
+  color: rgba(255, 255, 255, 0.42);
+  transition: color 0.2s ease;
+}
+
+.score-slot.active {
+  color: var(--gold);
+}
+
+.round-item {
+  color: var(--white);
 }
 
 .action-panel {
-  padding: 14px 18px;
+  padding: 20px 24px;
   background: var(--panel-dim);
   border-top: 1px solid rgba(107, 0, 255, 0.2);
   border-bottom: 1px solid rgba(107, 0, 255, 0.2);
-  transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: background 0.2s ease, opacity 0.2s ease;
 }
 
 .action-panel.active {
   background: rgba(26, 10, 46, 0.94);
-  box-shadow: inset 0 0 34px rgba(255, 215, 0, 0.08), var(--glow-gold);
 }
 
 .action-panel.inactive {
-  opacity: 0.52;
+  opacity: 0.45;
 }
 
 .player-two {
@@ -270,52 +263,33 @@ input {
 }
 
 .panel-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 180px;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   height: 100%;
   width: 100%;
-  min-width: 0;
-}
-
-.panel-role-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 128px;
-}
-
-.panel-player {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
 }
 
 .panel-role {
-  color: var(--gold);
-  font-size: clamp(0.82rem, 1.7vw, 1rem);
+  grid-column: 1;
+  color: var(--white);
+  font-size: clamp(0.86rem, 1.7vw, 1rem);
   font-weight: 700;
-}
-
-.panel-status {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0 12px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: clamp(0.72rem, 1.5vw, 0.94rem);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .clue-card {
-  flex: 0 1 240px;
-  min-width: 120px;
-  padding: 12px 14px;
+  grid-column: 2;
+  width: 100%;
+  padding: 0 18px;
+  height: 48px;
+  display: flex;
+  align-items: center;
   border-radius: 16px;
-  background: rgba(255, 215, 0, 0.12);
-  border: 1px solid rgba(255, 215, 0, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.24);
   color: var(--white);
   font-size: clamp(0.68rem, 1.5vw, 0.88rem);
   white-space: nowrap;
@@ -323,17 +297,13 @@ input {
   text-overflow: ellipsis;
 }
 
-.clue-card.hidden {
-  display: none;
-}
-
 .clue-input {
-  flex: 0 1 220px;
-  min-width: 110px;
+  grid-column: 2;
+  width: 100%;
   height: 46px;
-  padding: 0 14px;
+  padding: 0 18px;
   border-radius: 999px;
-  border: 1px solid rgba(107, 0, 255, 0.4);
+  border: 1px solid rgba(255, 215, 0, 0.24);
   outline: none;
   background: rgba(4, 0, 10, 0.92);
   color: var(--white);
@@ -350,9 +320,9 @@ input {
 }
 
 .panel-button {
-  flex: 0 0 auto;
-  min-width: 112px;
-  height: 46px;
+  grid-column: 3;
+  width: 100%;
+  height: 48px;
   padding: 0 18px;
   border-radius: 999px;
   background: var(--gold);
@@ -369,7 +339,7 @@ input {
 .circle-zone {
   position: relative;
   min-height: 0;
-  padding: 12px;
+  padding: 24px;
 }
 
 .briefcase-circle {
@@ -385,17 +355,14 @@ input {
   height: 80px;
   display: grid;
   place-items: center;
-  border-radius: 20px;
-  border: 2px solid rgba(107, 0, 255, 0.85);
-  background:
-    linear-gradient(180deg, rgba(36, 11, 66, 0.96), rgba(17, 5, 32, 0.98));
+  border-radius: 50%;
+  border: 1px solid rgba(255, 215, 0, 0.72);
+  background: rgba(26, 10, 46, 0.95);
   color: var(--white);
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
-  box-shadow:
-    inset 0 0 18px rgba(107, 0, 255, 0.28),
-    0 0 18px rgba(0, 0, 0, 0.4);
+  text-shadow: none;
+  box-shadow: none;
   cursor: pointer;
   opacity: 0;
   transform: scale(0.6);
@@ -408,44 +375,24 @@ input {
     background 0.2s ease;
 }
 
-.briefcase::before {
-  content: "";
-  position: absolute;
-  top: -10px;
-  left: 24px;
-  width: 28px;
-  height: 14px;
-  border: 2px solid rgba(107, 0, 255, 0.8);
-  border-bottom: none;
-  border-radius: 12px 12px 0 0;
-  background: rgba(8, 0, 16, 0.65);
-}
-
 .briefcase.visible {
   animation: briefcaseAppear 0.42s ease forwards;
 }
 
 .briefcase:hover:not(.eliminated) {
-  transform: scale(1.06);
-  box-shadow:
-    inset 0 0 18px rgba(107, 0, 255, 0.34),
-    0 0 20px rgba(255, 215, 0, 0.35);
+  transform: scale(1.03);
 }
 
 .briefcase.hider-selected {
   border-color: var(--gold);
-  color: var(--gold);
-  box-shadow:
-    inset 0 0 18px rgba(255, 215, 0, 0.15),
-    0 0 22px rgba(255, 215, 0, 0.58);
+  color: var(--white);
+  box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.18);
   animation: selectedPulse 1s ease-in-out infinite;
 }
 
 .briefcase.guesser-selected {
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow:
-    inset 0 0 18px rgba(255, 255, 255, 0.12),
-    0 0 20px rgba(255, 255, 255, 0.22);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.18);
 }
 
 .briefcase.eliminating {
@@ -462,74 +409,18 @@ input {
   box-shadow: none;
 }
 
-.briefcase.eliminated::before {
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.turn-indicator {
-  position: absolute;
-  left: 50%;
-  width: 16px;
-  height: 16px;
-  margin-left: -8px;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 16px rgba(255, 215, 0, 0.7);
-  animation: pulseDot 0.9s ease-in-out infinite;
-  transition: top 0.25s ease, bottom 0.25s ease, transform 0.25s ease;
-}
-
-.turn-indicator::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  margin-left: -6px;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-}
-
-.turn-indicator.hidden {
-  opacity: 0;
-  animation: none;
-}
-
-.turn-indicator.toward-p1 {
-  bottom: 10px;
-}
-
-.turn-indicator.toward-p1::after {
-  top: 16px;
-  border-top: 10px solid var(--gold);
-}
-
-.turn-indicator.toward-p2 {
-  top: 10px;
-}
-
-.turn-indicator.toward-p2::after {
-  bottom: 16px;
-  border-bottom: 10px solid var(--gold);
-}
-
-.status-line {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: rgba(255, 255, 255, 0.92);
-}
-
 .result-screen {
   background: rgba(8, 0, 16, 0.9);
 }
 
 .result-card {
-  width: min(540px, calc(100vw - 32px));
+  width: min(460px, calc(100vw - 32px));
+  background: transparent;
 }
 
 .result-emoji {
   font-size: 4rem;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .result-screen.victory .result-emoji {
@@ -630,18 +521,6 @@ input {
   }
 }
 
-@keyframes pulseDot {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
 @keyframes trophyBounce {
   0%,
   100% {
@@ -654,34 +533,21 @@ input {
 
 @media (max-width: 900px) {
   .scoreboard {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    padding: 0 10px;
+    padding: 0 16px;
     gap: 8px;
   }
 
   .action-panel {
-    padding: 10px 8px;
+    padding: 16px;
   }
 
   .panel-inner {
-    gap: 8px;
-  }
-
-  .panel-role-block {
-    min-width: 104px;
+    grid-template-columns: 150px minmax(0, 1fr) 140px;
+    gap: 12px;
   }
 
   .panel-button {
-    min-width: 92px;
     padding: 0 12px;
-  }
-
-  .clue-input {
-    flex-basis: 150px;
-  }
-
-  .clue-card {
-    flex-basis: 160px;
   }
 }
 
@@ -691,16 +557,25 @@ input {
     padding: 28px 18px;
   }
 
-  .score-label,
-  .panel-player {
-    letter-spacing: 0.12em;
-  }
-
-  .panel-status,
   .clue-card,
-  .clue-input,
-  .status-line {
+  .clue-input {
     font-size: 0.66rem;
   }
 
+  .panel-inner {
+    grid-template-columns: 118px minmax(0, 1fr) 112px;
+    gap: 8px;
+  }
+
+  .panel-role,
+  .score-name,
+  .score-value,
+  .round-label,
+  .round-value {
+    letter-spacing: 0.08em;
+  }
+
+  .circle-zone {
+    padding: 16px;
+  }
 }

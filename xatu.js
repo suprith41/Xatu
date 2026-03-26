@@ -24,18 +24,16 @@ const elements = {
   startButton: document.getElementById("start-button"),
   gameShell: document.getElementById("game-shell"),
   briefcaseCircle: document.getElementById("briefcase-circle"),
+  scoreSlotP1: document.getElementById("score-slot-p1"),
+  scoreSlotP2: document.getElementById("score-slot-p2"),
   scoreP1: document.getElementById("score-p1"),
   scoreP2: document.getElementById("score-p2"),
   roundNumber: document.getElementById("round-number"),
-  holderName: document.getElementById("holder-name"),
-  statusLine: document.getElementById("status-line"),
-  turnIndicator: document.getElementById("turn-indicator"),
   resultScreen: document.getElementById("result-screen"),
   resultTitle: document.getElementById("result-title"),
   resultSubtitle: document.getElementById("result-subtitle"),
   resultEmoji: document.getElementById("result-emoji"),
   playAgainButton: document.getElementById("play-again-button"),
-  resetInline: document.getElementById("reset-inline"),
   flashOverlay: document.getElementById("flash-overlay"),
   confettiCanvas: document.getElementById("confetti-canvas"),
   panels: {
@@ -52,7 +50,6 @@ const panelRefs = {
 function getPanelRefs(panel) {
   return {
     roleLabel: panel.querySelector("[data-role-label]"),
-    statusText: panel.querySelector("[data-status-text]"),
     clueCard: panel.querySelector("[data-clue-card]"),
     clueInput: panel.querySelector("[data-clue-input]"),
     actionButton: panel.querySelector("[data-action-button]")
@@ -151,7 +148,6 @@ function handlePanelAction(playerId) {
 
 function submitHide(playerId) {
   if (!state.hideSelection) {
-    panelRefs[playerId].statusText.textContent = "Select a briefcase first.";
     return;
   }
 
@@ -166,7 +162,6 @@ function submitHide(playerId) {
 
 function confirmGuess(playerId) {
   if (!state.guessSelection) {
-    panelRefs[playerId].statusText.textContent = "Choose a briefcase before confirming.";
     return;
   }
 
@@ -236,7 +231,7 @@ function showVictory(winnerId) {
   render();
   elements.resultScreen.className = "screen-overlay result-screen active victory";
   elements.resultTitle.textContent = "VICTORY";
-  elements.resultSubtitle.textContent = `${players[winnerId]} guessed correctly and wins the game.`;
+  elements.resultSubtitle.textContent = "";
   elements.resultEmoji.textContent = "🏆";
   runConfetti();
 }
@@ -246,8 +241,8 @@ function showDraw() {
   render();
   elements.resultScreen.className = "screen-overlay result-screen active draw";
   elements.resultTitle.textContent = "DRAW";
-  elements.resultSubtitle.textContent = "Every hiding place was eliminated. Nobody solved XATU.";
-  elements.resultEmoji.textContent = "◈";
+  elements.resultSubtitle.textContent = "";
+  elements.resultEmoji.textContent = "🏆";
 }
 
 function hideResultScreen() {
@@ -320,39 +315,26 @@ function updatePanel(playerId) {
   const refs = panelRefs[playerId];
   const mode = panelMode(playerId);
   const isActive = activePlayerId() === playerId;
-  const activeCases = activeCaseIds().length;
 
   elements.panels[playerId].classList.toggle("active", isActive);
   elements.panels[playerId].classList.toggle("inactive", !isActive);
 
   if (mode === "hider") {
     refs.roleLabel.textContent = "HIDE OBJECT";
+    refs.clueInput.disabled = !isActive || state.phase !== "hide";
+    refs.clueInput.placeholder = "Enter a clue (optional)";
+    refs.clueInput.classList.remove("hidden");
     refs.clueCard.classList.add("hidden");
     refs.clueCard.textContent = "";
-    refs.clueInput.disabled = !isActive || state.phase !== "hide";
-    refs.clueInput.placeholder = "Optional clue";
     refs.actionButton.textContent = "Submit";
     refs.actionButton.disabled = !isActive || state.phase !== "hide";
-
-    if (isActive && state.phase === "hide") {
-      refs.statusText.textContent = state.hideSelection
-        ? `Briefcase ${state.hideSelection} selected. ${activeCases} active briefcases remain.`
-        : "Select a briefcase, add a clue if you want, then submit.";
-    } else if (state.phase === "resolving") {
-      refs.statusText.textContent = "The hidden briefcase was exposed and eliminated.";
-    } else if (state.phase === "guess") {
-      refs.statusText.textContent = "Object hidden. Wait for the guess.";
-    } else if (state.phase === "ended") {
-      refs.statusText.textContent = "Game over.";
-    } else {
-      refs.statusText.textContent = "Waiting for your hiding turn.";
-    }
     return;
   }
 
   refs.roleLabel.textContent = "MAKE YOUR GUESS";
   refs.clueInput.disabled = true;
   refs.clueInput.value = "";
+  refs.clueInput.classList.add("hidden");
   refs.actionButton.textContent = "Confirm";
   refs.actionButton.disabled = !isActive || state.phase !== "guess";
 
@@ -362,20 +344,6 @@ function updatePanel(playerId) {
   } else {
     refs.clueCard.classList.add("hidden");
     refs.clueCard.textContent = "";
-  }
-
-  if (isActive && state.phase === "guess") {
-    refs.statusText.textContent = state.guessSelection
-      ? `Current selection: Briefcase ${state.guessSelection}.`
-      : "Pick a briefcase, then confirm your guess.";
-  } else if (state.phase === "resolving") {
-    refs.statusText.textContent = "Wrong guess. Roles are swapping now.";
-  } else if (state.phase === "hide") {
-    refs.statusText.textContent = "Waiting for the hider to lock in the object.";
-  } else if (state.phase === "ended") {
-    refs.statusText.textContent = "Game over.";
-  } else {
-    refs.statusText.textContent = "Waiting for your guessing turn.";
   }
 }
 
@@ -408,33 +376,8 @@ function updateScoreboard() {
   elements.scoreP1.textContent = String(state.scores.P1);
   elements.scoreP2.textContent = String(state.scores.P2);
   elements.roundNumber.textContent = String(state.round);
-  elements.holderName.textContent = players[state.roles.hider];
-}
-
-function updateStatusLine() {
-  if (state.phase === "hide") {
-    elements.statusLine.textContent = `${players[state.roles.hider]} is hiding the object. ${activeCaseIds().length} briefcases remain active.`;
-    elements.turnIndicator.className = `turn-indicator toward-${state.roles.hider.toLowerCase()}`;
-    return;
-  }
-
-  if (state.phase === "guess") {
-    const clueText = state.clue ? ` Clue: "${state.clue}".` : "";
-    elements.statusLine.textContent = `${players[state.roles.guesser]} is guessing.${clueText}`;
-    elements.turnIndicator.className = `turn-indicator toward-${state.roles.guesser.toLowerCase()}`;
-    return;
-  }
-
-  if (state.phase === "resolving") {
-    elements.statusLine.textContent = "Wrong guess. Eliminating the hidden briefcase and swapping roles.";
-    elements.turnIndicator.className = "turn-indicator hidden";
-    return;
-  }
-
-  if (state.phase === "ended") {
-    elements.statusLine.textContent = "Play again to start a new match.";
-    elements.turnIndicator.className = "turn-indicator hidden";
-  }
+  elements.scoreSlotP1.classList.toggle("active", activePlayerId() === "P1");
+  elements.scoreSlotP2.classList.toggle("active", activePlayerId() === "P2");
 }
 
 function render() {
@@ -442,7 +385,6 @@ function render() {
   updatePanel("P1");
   updatePanel("P2");
   updateBriefcases();
-  updateStatusLine();
 }
 
 function setupPanelActions() {
@@ -518,7 +460,6 @@ function runConfetti() {
 function registerEvents() {
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", playAgain);
-  elements.resetInline.addEventListener("click", resetGame);
 
   const resizeObserver = new ResizeObserver(() => placeBriefcases());
   resizeObserver.observe(elements.briefcaseCircle);
