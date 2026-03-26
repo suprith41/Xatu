@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XATU</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+  <div id="flash-overlay" aria-hidden="true"></div>
+
+  <div id="home-screen" class="screen-overlay active" aria-live="polite">
+    <div class="hex-grid" aria-hidden="true"></div>
+    <div class="home-card">
+      <div id="home-title" class="home-title" aria-label="XATU"></div>
+      <p class="home-tagline">The Art of Deception</p>
+      <p class="home-description">
+        Ten briefcases. One hidden object. One clue if you want it. Outsmart your opponent by
+        hiding well, guessing better, and surviving every role swap.
+      </p>
+      <button id="start-button" class="primary-button" type="button">Start Game</button>
+    </div>
+  </div>
+
+  <main id="game-shell" class="game-shell" aria-hidden="true">
+    <header class="scoreboard">
+      <div class="score-item score-left">
+        <span class="score-label">P1</span>
+        <span id="score-p1" class="score-value">0</span>
+      </div>
+      <div class="round-item">
+        <span class="score-label">Round</span>
+        <span id="round-number" class="round-value">1</span>
+      </div>
+      <div class="holder-item">
+        <span class="holder-icon">👑</span>
+        <span id="holder-name" class="holder-name">Player 1</span>
+      </div>
+      <div class="score-item score-right">
+        <span class="score-label">P2</span>
+        <span id="score-p2" class="score-value">0</span>
+      </div>
+    </header>
+
+    <section id="panel-p2" class="action-panel player-two" data-player="P2">
+      <div class="panel-inner">
+        <div class="panel-role-block">
+          <span class="panel-player">Player 2</span>
+          <span class="panel-role" data-role-label>MAKE YOUR GUESS</span>
+        </div>
+        <div class="panel-status" data-status-text>Select a briefcase to begin.</div>
+        <div class="clue-card hidden" data-clue-card></div>
+        <input class="clue-input" data-clue-input type="text" maxlength="90" placeholder="Optional clue">
+        <button class="panel-button" data-action-button type="button">Confirm</button>
+      </div>
+    </section>
+
+    <section class="circle-zone">
+      <div id="briefcase-circle" class="briefcase-circle" aria-label="Briefcases"></div>
+      <div id="turn-indicator" class="turn-indicator toward-p1" aria-hidden="true"></div>
+    </section>
+
+    <section id="panel-p1" class="action-panel player-one" data-player="P1">
+      <div class="panel-inner">
+        <div class="panel-role-block">
+          <span class="panel-player">Player 1</span>
+          <span class="panel-role" data-role-label>HIDE OBJECT</span>
+        </div>
+        <div class="panel-status" data-status-text>Select a briefcase to begin.</div>
+        <div class="clue-card hidden" data-clue-card></div>
+        <input class="clue-input" data-clue-input type="text" maxlength="90" placeholder="Optional clue">
+        <button class="panel-button" data-action-button type="button">Submit</button>
+      </div>
+    </section>
+
+    <footer class="bottom-bar">
+      <div id="status-line" class="status-line">Choose a briefcase to hide the object.</div>
+      <button id="reset-inline" class="secondary-button" type="button">Reset Game</button>
+    </footer>
+  </main>
+
+  <div id="result-screen" class="screen-overlay result-screen" aria-live="assertive">
+    <div class="result-card">
+      <div id="result-emoji" class="result-emoji">🏆</div>
+      <h1 id="result-title" class="result-title">VICTORY</h1>
+      <p id="result-subtitle" class="result-subtitle">Player 1 wins.</p>
+      <button id="play-again-button" class="primary-button" type="button">Play Again</button>
+    </div>
+  </div>
+
+  <script src="xatu.js"></script>
+</body>
+</html>

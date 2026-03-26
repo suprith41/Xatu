@@ -1,0 +1,535 @@
+const TOTAL_CASES = 10;
+const players = {
+  P1: "Player 1",
+  P2: "Player 2"
+};
+
+const state = {
+  phase: "home",
+  round: 1,
+  scores: { P1: 0, P2: 0 },
+  roles: { hider: "P1", guesser: "P2" },
+  hiddenCaseId: null,
+  clue: "",
+  hideSelection: null,
+  guessSelection: null,
+  cases: [],
+  confettiFrame: null,
+  confettiParticles: []
+};
+
+const elements = {
+  homeScreen: document.getElementById("home-screen"),
+  homeTitle: document.getElementById("home-title"),
+  startButton: document.getElementById("start-button"),
+  gameShell: document.getElementById("game-shell"),
+  briefcaseCircle: document.getElementById("briefcase-circle"),
+  scoreP1: document.getElementById("score-p1"),
+  scoreP2: document.getElementById("score-p2"),
+  roundNumber: document.getElementById("round-number"),
+  holderName: document.getElementById("holder-name"),
+  statusLine: document.getElementById("status-line"),
+  turnIndicator: document.getElementById("turn-indicator"),
+  resultScreen: document.getElementById("result-screen"),
+  resultTitle: document.getElementById("result-title"),
+  resultSubtitle: document.getElementById("result-subtitle"),
+  resultEmoji: document.getElementById("result-emoji"),
+  playAgainButton: document.getElementById("play-again-button"),
+  resetInline: document.getElementById("reset-inline"),
+  flashOverlay: document.getElementById("flash-overlay"),
+  confettiCanvas: document.getElementById("confetti-canvas"),
+  panels: {
+    P1: document.getElementById("panel-p1"),
+    P2: document.getElementById("panel-p2")
+  }
+};
+
+const panelRefs = {
+  P1: getPanelRefs(elements.panels.P1),
+  P2: getPanelRefs(elements.panels.P2)
+};
+
+function getPanelRefs(panel) {
+  return {
+    roleLabel: panel.querySelector("[data-role-label]"),
+    statusText: panel.querySelector("[data-status-text]"),
+    clueCard: panel.querySelector("[data-clue-card]"),
+    clueInput: panel.querySelector("[data-clue-input]"),
+    actionButton: panel.querySelector("[data-action-button]")
+  };
+}
+
+function buildHomeTitle() {
+  const letters = "XATU".split("");
+  elements.homeTitle.innerHTML = "";
+  letters.forEach((letter, index) => {
+    const span = document.createElement("span");
+    span.textContent = letter;
+    elements.homeTitle.appendChild(span);
+    setTimeout(() => span.classList.add("visible"), 180 * index + 120);
+  });
+}
+
+function initializeCases() {
+  state.cases = Array.from({ length: TOTAL_CASES }, (_, index) => ({
+    id: index + 1,
+    eliminated: false,
+    animating: false
+  }));
+
+  elements.briefcaseCircle.innerHTML = "";
+  state.cases.forEach((briefcase, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "briefcase";
+    button.dataset.caseId = String(briefcase.id);
+    button.dataset.index = String(index);
+    button.textContent = String(briefcase.id);
+    button.setAttribute("aria-label", `Briefcase ${briefcase.id}`);
+    button.addEventListener("click", () => handleBriefcaseClick(briefcase.id));
+    elements.briefcaseCircle.appendChild(button);
+  });
+}
+
+function resetState() {
+  state.phase = "hide";
+  state.round = 1;
+  state.scores = { P1: 0, P2: 0 };
+  state.roles = { hider: "P1", guesser: "P2" };
+  state.hiddenCaseId = null;
+  state.clue = "";
+  state.hideSelection = null;
+  state.guessSelection = null;
+  cancelConfetti();
+  initializeCases();
+  placeBriefcases();
+  animateBriefcasesIn();
+  clearPanelInputs();
+  hideResultScreen();
+}
+
+function clearPanelInputs() {
+  Object.values(panelRefs).forEach((refs) => {
+    refs.clueInput.value = "";
+  });
+}
+
+function activeCaseIds() {
+  return state.cases.filter((item) => !item.eliminated).map((item) => item.id);
+}
+
+function handleBriefcaseClick(caseId) {
+  const target = state.cases.find((item) => item.id === caseId);
+  if (!target || target.eliminated || target.animating) {
+    return;
+  }
+
+  if (state.phase === "hide") {
+    state.hideSelection = caseId;
+  } else if (state.phase === "guess") {
+    state.guessSelection = caseId;
+  } else {
+    return;
+  }
+
+  render();
+}
+
+function handlePanelAction(playerId) {
+  const isHiderTurn = state.phase === "hide" && state.roles.hider === playerId;
+  const isGuesserTurn = state.phase === "guess" && state.roles.guesser === playerId;
+
+  if (isHiderTurn) {
+    submitHide(playerId);
+    return;
+  }
+
+  if (isGuesserTurn) {
+    confirmGuess(playerId);
+  }
+}
+
+function submitHide(playerId) {
+  if (!state.hideSelection) {
+    panelRefs[playerId].statusText.textContent = "Select a briefcase first.";
+    return;
+  }
+
+  state.hiddenCaseId = state.hideSelection;
+  state.clue = panelRefs[playerId].clueInput.value.trim();
+  state.guessSelection = null;
+  state.hideSelection = null;
+  state.phase = "guess";
+  clearPanelInputs();
+  render();
+}
+
+function confirmGuess(playerId) {
+  if (!state.guessSelection) {
+    panelRefs[playerId].statusText.textContent = "Choose a briefcase before confirming.";
+    return;
+  }
+
+  const guesser = state.roles.guesser;
+  if (state.guessSelection === state.hiddenCaseId) {
+    state.scores[guesser] += 1;
+    render();
+    showVictory(guesser);
+    return;
+  }
+
+  const eliminatedCase = state.cases.find((item) => item.id === state.hiddenCaseId);
+  if (!eliminatedCase) {
+    return;
+  }
+
+  state.phase = "resolving";
+  render();
+  flashWrongGuess();
+  animateElimination(eliminatedCase.id, () => {
+    eliminatedCase.eliminated = true;
+    eliminatedCase.animating = false;
+    state.hiddenCaseId = null;
+    state.clue = "";
+    state.hideSelection = null;
+    state.guessSelection = null;
+
+    if (activeCaseIds().length === 0) {
+      render();
+      showDraw();
+      return;
+    }
+
+    state.roles = {
+      hider: state.roles.guesser,
+      guesser: state.roles.hider
+    };
+    state.round += 1;
+    state.phase = "hide";
+    clearPanelInputs();
+    render();
+  });
+}
+
+function animateElimination(caseId, onComplete) {
+  const button = getBriefcaseButton(caseId);
+  const caseState = state.cases.find((item) => item.id === caseId);
+  if (!button || !caseState) {
+    onComplete();
+    return;
+  }
+
+  caseState.animating = true;
+  button.classList.add("eliminating");
+  setTimeout(onComplete, 950);
+}
+
+function flashWrongGuess() {
+  elements.flashOverlay.classList.remove("flash");
+  void elements.flashOverlay.offsetWidth;
+  elements.flashOverlay.classList.add("flash");
+  setTimeout(() => elements.flashOverlay.classList.remove("flash"), 480);
+}
+
+function showVictory(winnerId) {
+  state.phase = "ended";
+  render();
+  elements.resultScreen.className = "screen-overlay result-screen active victory";
+  elements.resultTitle.textContent = "VICTORY";
+  elements.resultSubtitle.textContent = `${players[winnerId]} guessed correctly and wins the game.`;
+  elements.resultEmoji.textContent = "🏆";
+  runConfetti();
+}
+
+function showDraw() {
+  state.phase = "ended";
+  render();
+  elements.resultScreen.className = "screen-overlay result-screen active draw";
+  elements.resultTitle.textContent = "DRAW";
+  elements.resultSubtitle.textContent = "Every hiding place was eliminated. Nobody solved XATU.";
+  elements.resultEmoji.textContent = "◈";
+}
+
+function hideResultScreen() {
+  elements.resultScreen.className = "screen-overlay result-screen";
+}
+
+function startGame() {
+  resetState();
+  elements.homeScreen.classList.remove("active");
+  elements.gameShell.setAttribute("aria-hidden", "false");
+  render();
+}
+
+function resetGame() {
+  elements.homeScreen.classList.remove("active");
+  elements.gameShell.setAttribute("aria-hidden", "false");
+  resetState();
+  render();
+}
+
+function playAgain() {
+  resetGame();
+}
+
+function getBriefcaseButton(caseId) {
+  return elements.briefcaseCircle.querySelector(`[data-case-id="${caseId}"]`);
+}
+
+function placeBriefcases() {
+  const container = elements.briefcaseCircle;
+  const centerX = container.offsetWidth / 2;
+  const centerY = container.offsetHeight / 2;
+  const radius = Math.min(container.offsetWidth, container.offsetHeight) * 0.38;
+
+  Array.from(container.children).forEach((button, i) => {
+    const angle = (i * 2 * Math.PI / 10) - Math.PI / 2;
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    button.style.left = `${x - 40}px`;
+    button.style.top = `${y - 40}px`;
+  });
+}
+
+function animateBriefcasesIn() {
+  Array.from(elements.briefcaseCircle.children).forEach((button, index) => {
+    button.classList.remove("visible");
+    button.style.animationDelay = `${index * 90}ms`;
+    requestAnimationFrame(() => button.classList.add("visible"));
+  });
+}
+
+function panelMode(playerId) {
+  if (state.roles.hider === playerId) {
+    return "hider";
+  }
+  return "guesser";
+}
+
+function activePlayerId() {
+  if (state.phase === "hide") {
+    return state.roles.hider;
+  }
+  if (state.phase === "guess") {
+    return state.roles.guesser;
+  }
+  return null;
+}
+
+function updatePanel(playerId) {
+  const refs = panelRefs[playerId];
+  const mode = panelMode(playerId);
+  const isActive = activePlayerId() === playerId;
+  const activeCases = activeCaseIds().length;
+
+  elements.panels[playerId].classList.toggle("active", isActive);
+  elements.panels[playerId].classList.toggle("inactive", !isActive);
+
+  if (mode === "hider") {
+    refs.roleLabel.textContent = "HIDE OBJECT";
+    refs.clueCard.classList.add("hidden");
+    refs.clueCard.textContent = "";
+    refs.clueInput.disabled = !isActive || state.phase !== "hide";
+    refs.clueInput.placeholder = "Optional clue";
+    refs.actionButton.textContent = "Submit";
+    refs.actionButton.disabled = !isActive || state.phase !== "hide";
+
+    if (isActive && state.phase === "hide") {
+      refs.statusText.textContent = state.hideSelection
+        ? `Briefcase ${state.hideSelection} selected. ${activeCases} active briefcases remain.`
+        : "Select a briefcase, add a clue if you want, then submit.";
+    } else if (state.phase === "resolving") {
+      refs.statusText.textContent = "The hidden briefcase was exposed and eliminated.";
+    } else if (state.phase === "guess") {
+      refs.statusText.textContent = "Object hidden. Wait for the guess.";
+    } else if (state.phase === "ended") {
+      refs.statusText.textContent = "Game over.";
+    } else {
+      refs.statusText.textContent = "Waiting for your hiding turn.";
+    }
+    return;
+  }
+
+  refs.roleLabel.textContent = "MAKE YOUR GUESS";
+  refs.clueInput.disabled = true;
+  refs.clueInput.value = "";
+  refs.actionButton.textContent = "Confirm";
+  refs.actionButton.disabled = !isActive || state.phase !== "guess";
+
+  if (state.clue) {
+    refs.clueCard.classList.remove("hidden");
+    refs.clueCard.textContent = `Clue: ${state.clue}`;
+  } else {
+    refs.clueCard.classList.add("hidden");
+    refs.clueCard.textContent = "";
+  }
+
+  if (isActive && state.phase === "guess") {
+    refs.statusText.textContent = state.guessSelection
+      ? `Current selection: Briefcase ${state.guessSelection}.`
+      : "Pick a briefcase, then confirm your guess.";
+  } else if (state.phase === "resolving") {
+    refs.statusText.textContent = "Wrong guess. Roles are swapping now.";
+  } else if (state.phase === "hide") {
+    refs.statusText.textContent = "Waiting for the hider to lock in the object.";
+  } else if (state.phase === "ended") {
+    refs.statusText.textContent = "Game over.";
+  } else {
+    refs.statusText.textContent = "Waiting for your guessing turn.";
+  }
+}
+
+function updateBriefcases() {
+  state.cases.forEach((briefcase) => {
+    const button = getBriefcaseButton(briefcase.id);
+    if (!button) {
+      return;
+    }
+
+    button.classList.toggle(
+      "hider-selected",
+      state.phase === "hide" && state.hideSelection === briefcase.id
+    );
+    button.classList.toggle(
+      "guesser-selected",
+      state.phase === "guess" && state.guessSelection === briefcase.id
+    );
+    button.classList.toggle("eliminated", briefcase.eliminated);
+
+    if (!briefcase.animating) {
+      button.classList.remove("eliminating");
+    }
+
+    button.disabled = briefcase.eliminated || state.phase === "ended" || state.phase === "resolving";
+  });
+}
+
+function updateScoreboard() {
+  elements.scoreP1.textContent = String(state.scores.P1);
+  elements.scoreP2.textContent = String(state.scores.P2);
+  elements.roundNumber.textContent = String(state.round);
+  elements.holderName.textContent = players[state.roles.hider];
+}
+
+function updateStatusLine() {
+  if (state.phase === "hide") {
+    elements.statusLine.textContent = `${players[state.roles.hider]} is hiding the object. ${activeCaseIds().length} briefcases remain active.`;
+    elements.turnIndicator.className = `turn-indicator toward-${state.roles.hider.toLowerCase()}`;
+    return;
+  }
+
+  if (state.phase === "guess") {
+    const clueText = state.clue ? ` Clue: "${state.clue}".` : "";
+    elements.statusLine.textContent = `${players[state.roles.guesser]} is guessing.${clueText}`;
+    elements.turnIndicator.className = `turn-indicator toward-${state.roles.guesser.toLowerCase()}`;
+    return;
+  }
+
+  if (state.phase === "resolving") {
+    elements.statusLine.textContent = "Wrong guess. Eliminating the hidden briefcase and swapping roles.";
+    elements.turnIndicator.className = "turn-indicator hidden";
+    return;
+  }
+
+  if (state.phase === "ended") {
+    elements.statusLine.textContent = "Play again to start a new match.";
+    elements.turnIndicator.className = "turn-indicator hidden";
+  }
+}
+
+function render() {
+  updateScoreboard();
+  updatePanel("P1");
+  updatePanel("P2");
+  updateBriefcases();
+  updateStatusLine();
+}
+
+function setupPanelActions() {
+  Object.entries(panelRefs).forEach(([playerId, refs]) => {
+    refs.actionButton.addEventListener("click", () => handlePanelAction(playerId));
+    refs.clueInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !refs.clueInput.disabled) {
+        handlePanelAction(playerId);
+      }
+    });
+  });
+}
+
+function sizeConfettiCanvas() {
+  elements.confettiCanvas.width = window.innerWidth;
+  elements.confettiCanvas.height = window.innerHeight;
+}
+
+function cancelConfetti() {
+  if (state.confettiFrame) {
+    cancelAnimationFrame(state.confettiFrame);
+    state.confettiFrame = null;
+  }
+  state.confettiParticles = [];
+  const ctx = elements.confettiCanvas.getContext("2d");
+  ctx.clearRect(0, 0, elements.confettiCanvas.width, elements.confettiCanvas.height);
+}
+
+function runConfetti() {
+  cancelConfetti();
+  sizeConfettiCanvas();
+  const ctx = elements.confettiCanvas.getContext("2d");
+  const colors = ["#FFD700", "#6B00FF", "#f5d76e", "#c18bff"];
+  const start = performance.now();
+
+  state.confettiParticles = Array.from({ length: 200 }, () => ({
+    x: Math.random() * elements.confettiCanvas.width,
+    y: -Math.random() * elements.confettiCanvas.height * 0.4,
+    size: 4 + Math.random() * 6,
+    speedY: 2 + Math.random() * 4,
+    speedX: -2 + Math.random() * 4,
+    rotation: Math.random() * Math.PI,
+    rotationSpeed: -0.2 + Math.random() * 0.4,
+    color: colors[Math.floor(Math.random() * colors.length)]
+  }));
+
+  function frame(now) {
+    ctx.clearRect(0, 0, elements.confettiCanvas.width, elements.confettiCanvas.height);
+    state.confettiParticles.forEach((particle) => {
+      particle.x += particle.speedX;
+      particle.y += particle.speedY;
+      particle.rotation += particle.rotationSpeed;
+
+      ctx.save();
+      ctx.translate(particle.x, particle.y);
+      ctx.rotate(particle.rotation);
+      ctx.fillStyle = particle.color;
+      ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 0.6);
+      ctx.restore();
+    });
+
+    if (now - start < 4000) {
+      state.confettiFrame = requestAnimationFrame(frame);
+      return;
+    }
+
+    cancelConfetti();
+  }
+
+  state.confettiFrame = requestAnimationFrame(frame);
+}
+
+function registerEvents() {
+  elements.startButton.addEventListener("click", startGame);
+  elements.playAgainButton.addEventListener("click", playAgain);
+  elements.resetInline.addEventListener("click", resetGame);
+
+  const resizeObserver = new ResizeObserver(() => placeBriefcases());
+  resizeObserver.observe(elements.briefcaseCircle);
+
+  window.addEventListener("resize", () => {
+    placeBriefcases();
+    sizeConfettiCanvas();
+  });
+}
+
+buildHomeTitle();
+setupPanelActions();
+registerEvents();
+sizeConfettiCanvas();
