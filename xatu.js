@@ -23,7 +23,7 @@ const elements = {
   homeTitle: document.getElementById("home-title"),
   startButton: document.getElementById("start-button"),
   gameShell: document.getElementById("game-shell"),
-  briefcaseCircle: document.getElementById("briefcase-circle"),
+  briefcaseCircle: document.getElementById("circle-container"),
   scoreSlotP1: document.getElementById("score-slot-p1"),
   scoreSlotP2: document.getElementById("score-slot-p2"),
   scoreP1: document.getElementById("score-p1"),
@@ -99,7 +99,7 @@ function resetState() {
   state.guessSelection = null;
   cancelConfetti();
   initializeCases();
-  placeBriefcases();
+  positionBriefcases();
   animateBriefcasesIn();
   clearPanelInputs();
   hideResultScreen();
@@ -123,6 +123,7 @@ function handleBriefcaseClick(caseId) {
 
   if (state.phase === "hide") {
     state.hideSelection = caseId;
+    updateBriefcases();
   } else if (state.phase === "guess") {
     state.guessSelection = caseId;
   } else {
@@ -271,18 +272,22 @@ function getBriefcaseButton(caseId) {
   return elements.briefcaseCircle.querySelector(`[data-case-id="${caseId}"]`);
 }
 
-function placeBriefcases() {
-  const container = elements.briefcaseCircle;
-  const centerX = container.offsetWidth / 2;
-  const centerY = container.offsetHeight / 2;
-  const radius = Math.min(container.offsetWidth, container.offsetHeight) * 0.38;
-
-  Array.from(container.children).forEach((button, i) => {
+function positionBriefcases() {
+  const container = document.getElementById('circle-container');
+  const rect = container.getBoundingClientRect();
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+  const radius = Math.min(rect.width, rect.height) * 0.30;
+  const cases = document.querySelectorAll('.briefcase');
+  cases.forEach((el, i) => {
     const angle = (i * 2 * Math.PI / 10) - Math.PI / 2;
     const x = centerX + radius * Math.cos(angle);
     const y = centerY + radius * Math.sin(angle);
-    button.style.left = `${x - 40}px`;
-    button.style.top = `${y - 40}px`;
+    el.style.position = 'absolute';
+    el.style.left = (x - 40) + 'px';
+    el.style.top = (y - 40) + 'px';
+    el.style.width = '80px';
+    el.style.height = '80px';
   });
 }
 
@@ -461,13 +466,9 @@ function registerEvents() {
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", playAgain);
 
-  const resizeObserver = new ResizeObserver(() => placeBriefcases());
-  resizeObserver.observe(elements.briefcaseCircle);
-
-  window.addEventListener("resize", () => {
-    placeBriefcases();
-    sizeConfettiCanvas();
-  });
+  setTimeout(positionBriefcases, 200);
+  window.addEventListener('resize', positionBriefcases);
+  window.addEventListener('resize', sizeConfettiCanvas);
 }
 
 buildHomeTitle();
