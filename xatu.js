@@ -15,14 +15,20 @@ const state = {
   guessSelection: null,
   cases: [],
   confettiFrame: null,
-  confettiParticles: []
+  confettiParticles: [],
+  ambienceFrame: null,
+  homeGlitchUntil: 0,
+  lastHomeGlitch: 0
 };
 
 const elements = {
+  pageGrainCanvas: document.getElementById("page-grain-canvas"),
   homeScreen: document.getElementById("home-screen"),
+  homeNoiseCanvas: document.getElementById("home-noise-canvas"),
   homeTitle: document.getElementById("home-title"),
   startButton: document.getElementById("start-button"),
   gameShell: document.getElementById("game-shell"),
+  gameNoiseCanvas: document.getElementById("game-noise-canvas"),
   briefcaseCircle: document.getElementById("circle-container"),
   scoreSlotP1: document.getElementById("score-slot-p1"),
   scoreSlotP2: document.getElementById("score-slot-p2"),
@@ -30,6 +36,7 @@ const elements = {
   scoreP2: document.getElementById("score-p2"),
   roundNumber: document.getElementById("round-number"),
   resultScreen: document.getElementById("result-screen"),
+  resultNoiseCanvas: document.getElementById("result-noise-canvas"),
   resultTitle: document.getElementById("result-title"),
   resultSubtitle: document.getElementById("result-subtitle"),
   resultEmoji: document.getElementById("result-emoji"),
@@ -74,17 +81,10 @@ function initializeCases() {
     animating: false
   }));
 
-  elements.briefcaseCircle.innerHTML = "";
-  state.cases.forEach((briefcase, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "briefcase";
-    button.dataset.caseId = String(briefcase.id);
-    button.dataset.index = String(index);
-    button.textContent = String(briefcase.id);
-    button.setAttribute("aria-label", `Briefcase ${briefcase.id}`);
-    button.addEventListener("click", () => handleBriefcaseClick(briefcase.id));
-    elements.briefcaseCircle.appendChild(button);
+  document.querySelectorAll(".briefcase").forEach((briefcase) => {
+    const caseId = Number(briefcase.dataset.id);
+    briefcase.textContent = String(caseId);
+    briefcase.onclick = () => handleBriefcaseClick(caseId);
   });
 }
 
@@ -99,10 +99,10 @@ function resetState() {
   state.guessSelection = null;
   cancelConfetti();
   initializeCases();
-  positionBriefcases();
   animateBriefcasesIn();
   clearPanelInputs();
   hideResultScreen();
+  triggerPhaseFlicker();
 }
 
 function clearPanelInputs() {
@@ -122,6 +122,10 @@ function handleBriefcaseClick(caseId) {
   }
 
   if (state.phase === "hide") {
+    document.querySelectorAll(".briefcase").forEach((briefcase) => {
+      briefcase.classList.remove("selected");
+    });
+    getBriefcaseButton(caseId)?.classList.add("selected");
     state.hideSelection = caseId;
     updateBriefcases();
   } else if (state.phase === "guess") {
@@ -158,6 +162,7 @@ function submitHide(playerId) {
   state.hideSelection = null;
   state.phase = "guess";
   clearPanelInputs();
+  triggerPhaseFlicker();
   render();
 }
 
@@ -180,6 +185,7 @@ function confirmGuess(playerId) {
   }
 
   state.phase = "resolving";
+  triggerPhaseFlicker();
   render();
   flashWrongGuess();
   animateElimination(eliminatedCase.id, () => {
@@ -203,6 +209,7 @@ function confirmGuess(playerId) {
     state.round += 1;
     state.phase = "hide";
     clearPanelInputs();
+    triggerPhaseFlicker();
     render();
   });
 }
@@ -221,29 +228,31 @@ function animateElimination(caseId, onComplete) {
 }
 
 function flashWrongGuess() {
-  elements.flashOverlay.classList.remove("flash");
+  elements.flashOverlay.classList.remove("wrong-flash");
   void elements.flashOverlay.offsetWidth;
-  elements.flashOverlay.classList.add("flash");
-  setTimeout(() => elements.flashOverlay.classList.remove("flash"), 480);
+  elements.flashOverlay.classList.add("wrong-flash");
+  setTimeout(() => elements.flashOverlay.classList.remove("wrong-flash"), 480);
 }
 
 function showVictory(winnerId) {
   state.phase = "ended";
+  triggerPhaseFlicker();
   render();
   elements.resultScreen.className = "screen-overlay result-screen active victory";
-  elements.resultTitle.textContent = "VICTORY";
-  elements.resultSubtitle.textContent = "";
-  elements.resultEmoji.textContent = "🏆";
+  elements.resultTitle.textContent = players[winnerId].toUpperCase();
+  elements.resultSubtitle.textContent = "CASE CLOSED";
+  elements.resultEmoji.textContent = "";
   runConfetti();
 }
 
 function showDraw() {
   state.phase = "ended";
+  triggerPhaseFlicker();
   render();
   elements.resultScreen.className = "screen-overlay result-screen active draw";
-  elements.resultTitle.textContent = "DRAW";
-  elements.resultSubtitle.textContent = "";
-  elements.resultEmoji.textContent = "🏆";
+  elements.resultTitle.textContent = "NO WINNER";
+  elements.resultSubtitle.textContent = "The trail goes cold.";
+  elements.resultEmoji.textContent = "";
 }
 
 function hideResultScreen() {
@@ -269,15 +278,15 @@ function playAgain() {
 }
 
 function getBriefcaseButton(caseId) {
-  return elements.briefcaseCircle.querySelector(`[data-case-id="${caseId}"]`);
+  return elements.briefcaseCircle.querySelector(`[data-id="${caseId}"]`);
 }
 
 function positionBriefcases() {
   const container = document.getElementById('circle-container');
-  const rect = container.getBoundingClientRect();
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
-  const radius = Math.min(rect.width, rect.height) * 0.30;
+  const size = 500;
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const radius = 180;
   const cases = document.querySelectorAll('.briefcase');
   cases.forEach((el, i) => {
     const angle = (i * 2 * Math.PI / 10) - Math.PI / 2;
@@ -364,6 +373,10 @@ function updateBriefcases() {
       state.phase === "hide" && state.hideSelection === briefcase.id
     );
     button.classList.toggle(
+      "selected",
+      state.phase === "hide" && state.hideSelection === briefcase.id
+    );
+    button.classList.toggle(
       "guesser-selected",
       state.phase === "guess" && state.guessSelection === briefcase.id
     );
@@ -408,6 +421,18 @@ function sizeConfettiCanvas() {
   elements.confettiCanvas.height = window.innerHeight;
 }
 
+function sizeCanvas(canvas) {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function sizeAmbienceCanvases() {
+  sizeCanvas(elements.pageGrainCanvas);
+  sizeCanvas(elements.homeNoiseCanvas);
+  sizeCanvas(elements.gameNoiseCanvas);
+  sizeCanvas(elements.resultNoiseCanvas);
+}
+
 function cancelConfetti() {
   if (state.confettiFrame) {
     cancelAnimationFrame(state.confettiFrame);
@@ -422,17 +447,18 @@ function runConfetti() {
   cancelConfetti();
   sizeConfettiCanvas();
   const ctx = elements.confettiCanvas.getContext("2d");
-  const colors = ["#FFD700", "#6B00FF", "#f5d76e", "#c18bff"];
+  const colors = ["#D4860B", "#E8E8E8", "#8B7355"];
   const start = performance.now();
 
-  state.confettiParticles = Array.from({ length: 200 }, () => ({
+  state.confettiParticles = Array.from({ length: 90 }, () => ({
     x: Math.random() * elements.confettiCanvas.width,
-    y: -Math.random() * elements.confettiCanvas.height * 0.4,
-    size: 4 + Math.random() * 6,
-    speedY: 2 + Math.random() * 4,
-    speedX: -2 + Math.random() * 4,
+    y: -Math.random() * elements.confettiCanvas.height * 0.6,
+    width: 5 + Math.random() * 7,
+    height: 8 + Math.random() * 12,
+    speedY: 0.7 + Math.random() * 1.4,
+    speedX: -0.6 + Math.random() * 1.2,
     rotation: Math.random() * Math.PI,
-    rotationSpeed: -0.2 + Math.random() * 0.4,
+    rotationSpeed: -0.03 + Math.random() * 0.06,
     color: colors[Math.floor(Math.random() * colors.length)]
   }));
 
@@ -447,11 +473,11 @@ function runConfetti() {
       ctx.translate(particle.x, particle.y);
       ctx.rotate(particle.rotation);
       ctx.fillStyle = particle.color;
-      ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size * 0.6);
+      ctx.fillRect(-particle.width / 2, -particle.height / 2, particle.width, particle.height);
       ctx.restore();
     });
 
-    if (now - start < 4000) {
+    if (now - start < 5000) {
       state.confettiFrame = requestAnimationFrame(frame);
       return;
     }
@@ -462,16 +488,127 @@ function runConfetti() {
   state.confettiFrame = requestAnimationFrame(frame);
 }
 
+function drawNoiseLayer(canvas, options) {
+  const ctx = canvas.getContext("2d");
+  const { width, height } = canvas;
+  const {
+    density,
+    alpha,
+    palette,
+    background,
+    flicker
+  } = options;
+
+  ctx.clearRect(0, 0, width, height);
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  for (let i = 0; i < density; i += 1) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const size = 1 + Math.random() * 2;
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    ctx.fillStyle = `${color}${alpha}`;
+    ctx.fillRect(x, y, size, size);
+  }
+
+  if (flicker) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * flicker})`;
+    ctx.fillRect(0, 0, width, height);
+  }
+}
+
+function renderHomeNoise(now) {
+  drawNoiseLayer(elements.homeNoiseCanvas, {
+    density: 2200,
+    alpha: "0.11)",
+    palette: ["rgba(255,255,255,", "rgba(190,190,190,", "rgba(95,95,95,"],
+    background: "rgba(13, 13, 13, 0.25)",
+    flicker: 0.03
+  });
+
+  if (now - state.lastHomeGlitch > 3000) {
+    state.lastHomeGlitch = now;
+    state.homeGlitchUntil = now + 200;
+  }
+
+  if (now < state.homeGlitchUntil) {
+    const ctx = elements.homeNoiseCanvas.getContext("2d");
+    const { width, height } = elements.homeNoiseCanvas;
+
+    for (let i = 0; i < 9; i += 1) {
+      const sliceY = Math.random() * height;
+      const sliceH = 8 + Math.random() * 30;
+      const offset = -28 + Math.random() * 56;
+      ctx.drawImage(elements.homeNoiseCanvas, 0, sliceY, width, sliceH, offset, sliceY, width, sliceH);
+    }
+  }
+}
+
+function renderAmbientNoise() {
+  drawNoiseLayer(elements.pageGrainCanvas, {
+    density: 3200,
+    alpha: "0.09)",
+    palette: ["rgba(255,255,255,", "rgba(120,120,120,", "rgba(40,40,40,"]
+  });
+
+  if (elements.homeScreen.classList.contains("active")) {
+    renderHomeNoise(performance.now());
+  } else {
+    elements.homeNoiseCanvas.getContext("2d").clearRect(0, 0, elements.homeNoiseCanvas.width, elements.homeNoiseCanvas.height);
+  }
+
+  if (elements.gameShell.getAttribute("aria-hidden") === "false") {
+    drawNoiseLayer(elements.gameNoiseCanvas, {
+      density: 1400,
+      alpha: "0.06)",
+      palette: ["rgba(255,255,255,", "rgba(150,150,150,", "rgba(60,60,60,"]
+    });
+  } else {
+    elements.gameNoiseCanvas.getContext("2d").clearRect(0, 0, elements.gameNoiseCanvas.width, elements.gameNoiseCanvas.height);
+  }
+
+  if (elements.resultScreen.classList.contains("active")) {
+    drawNoiseLayer(elements.resultNoiseCanvas, {
+      density: 1800,
+      alpha: "0.08)",
+      palette: ["rgba(255,255,255,", "rgba(180,180,180,", "rgba(70,70,70,"],
+      background: "rgba(0, 0, 0, 0.4)"
+    });
+  } else {
+    elements.resultNoiseCanvas.getContext("2d").clearRect(0, 0, elements.resultNoiseCanvas.width, elements.resultNoiseCanvas.height);
+  }
+}
+
+function runAmbience() {
+  renderAmbientNoise();
+  state.ambienceFrame = requestAnimationFrame(runAmbience);
+}
+
+function triggerPhaseFlicker() {
+  elements.flashOverlay.classList.remove("phase-flicker");
+  void elements.flashOverlay.offsetWidth;
+  elements.flashOverlay.classList.add("phase-flicker");
+  setTimeout(() => elements.flashOverlay.classList.remove("phase-flicker"), 180);
+}
+
 function registerEvents() {
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", playAgain);
 
-  setTimeout(positionBriefcases, 200);
-  window.addEventListener('resize', positionBriefcases);
-  window.addEventListener('resize', sizeConfettiCanvas);
+  window.addEventListener("resize", () => {
+    sizeConfettiCanvas();
+    sizeAmbienceCanvases();
+  });
 }
+
+document.addEventListener('DOMContentLoaded', positionBriefcases);
 
 buildHomeTitle();
 setupPanelActions();
 registerEvents();
 sizeConfettiCanvas();
+sizeAmbienceCanvases();
+runAmbience();

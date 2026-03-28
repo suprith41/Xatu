@@ -6,23 +6,27 @@
   <title>XATU</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;800&family=Special+Elite&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <canvas id="page-grain-canvas" aria-hidden="true"></canvas>
   <canvas id="confetti-canvas" aria-hidden="true"></canvas>
   <div id="flash-overlay" aria-hidden="true"></div>
 
   <div id="home-screen" class="screen-overlay active" aria-live="polite">
-    <div class="hex-grid" aria-hidden="true"></div>
+    <canvas id="home-noise-canvas" aria-hidden="true"></canvas>
+    <div class="home-vignette" aria-hidden="true"></div>
     <div class="home-card">
       <div id="home-title" class="home-title" aria-label="XATU"></div>
       <p class="home-tagline">The Art of Deception</p>
+      <div class="home-separator" aria-hidden="true"></div>
       <button id="start-button" class="primary-button" type="button">Start Game</button>
     </div>
   </div>
 
   <main id="game-shell" class="game-shell" aria-hidden="true">
+    <canvas id="game-noise-canvas" aria-hidden="true"></canvas>
     <header class="scoreboard">
       <div id="score-slot-p1" class="score-slot">
         <span class="score-name">P1</span>
@@ -48,9 +52,20 @@
       </div>
     </section>
 
-    <section class="circle-zone">
-      <div id="circle-container" class="briefcase-circle" aria-label="Briefcases"></div>
-    </section>
+    <div id="circle-wrapper">
+      <div id="circle-container">
+        <div class="briefcase" data-id="1">1</div>
+        <div class="briefcase" data-id="2">2</div>
+        <div class="briefcase" data-id="3">3</div>
+        <div class="briefcase" data-id="4">4</div>
+        <div class="briefcase" data-id="5">5</div>
+        <div class="briefcase" data-id="6">6</div>
+        <div class="briefcase" data-id="7">7</div>
+        <div class="briefcase" data-id="8">8</div>
+        <div class="briefcase" data-id="9">9</div>
+        <div class="briefcase" data-id="10">10</div>
+      </div>
+    </div>
 
     <section id="panel-p1" class="action-panel player-one" data-player="P1">
       <div class="panel-inner">
@@ -63,6 +78,7 @@
   </main>
 
   <div id="result-screen" class="screen-overlay result-screen" aria-live="assertive">
+    <canvas id="result-noise-canvas" aria-hidden="true"></canvas>
     <div class="result-card">
       <div id="result-emoji" class="result-emoji">🏆</div>
       <h1 id="result-title" class="result-title">VICTORY</h1>
