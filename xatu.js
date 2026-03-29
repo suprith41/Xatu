@@ -81,11 +81,37 @@ function initializeCases() {
     animating: false
   }));
 
-  document.querySelectorAll(".briefcase").forEach((briefcase) => {
-    const caseId = Number(briefcase.dataset.id);
-    briefcase.textContent = String(caseId);
-    briefcase.onclick = () => handleBriefcaseClick(caseId);
+  console.log("Briefcases array length:", state.cases.length);
+
+  elements.briefcaseCircle.innerHTML = "";
+  state.cases.forEach((briefcase) => {
+    const button = document.createElement("div");
+    button.className = "briefcase";
+    button.dataset.id = String(briefcase.id);
+    button.textContent = String(briefcase.id);
+    elements.briefcaseCircle.appendChild(button);
   });
+
+  document.querySelectorAll(".briefcase").forEach(function(el) {
+    el.addEventListener("click", function() {
+      if (state.phase !== "hide") {
+        handleBriefcaseClick(parseInt(this.getAttribute("data-id"), 10));
+        return;
+      }
+      const id = parseInt(this.getAttribute("data-id"), 10);
+      const briefcase = state.cases.find((b) => b.id === id);
+      if (!briefcase || briefcase.eliminated) return;
+      state.hideSelection = id;
+      document.querySelectorAll(".briefcase").forEach(function(b) {
+        b.classList.remove("selected");
+      });
+      this.classList.add("selected");
+      updateBriefcases();
+      render();
+    });
+  });
+
+  positionBriefcases();
 }
 
 function resetState() {
@@ -122,11 +148,11 @@ function handleBriefcaseClick(caseId) {
   }
 
   if (state.phase === "hide") {
+    state.hideSelection = caseId;
     document.querySelectorAll(".briefcase").forEach((briefcase) => {
       briefcase.classList.remove("selected");
     });
-    getBriefcaseButton(caseId)?.classList.add("selected");
-    state.hideSelection = caseId;
+    document.querySelector(`[data-id="${caseId}"]`)?.classList.add("selected");
     updateBriefcases();
   } else if (state.phase === "guess") {
     state.guessSelection = caseId;
